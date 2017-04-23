@@ -1,35 +1,39 @@
 import React, { Component } from 'react';
 import PouchDB from 'pouchdb';
-import GoogleMapReact from 'google-map-react';
-
-const Marker = (props) => {
-  return (
-    <div style={{backgroundColor: 'red'}}>
-      Hello
-    </div>
-  );
-}
 
 class GeoTracker extends Component {
   constructor(props) {
     super(props);
-
-    // this.db = new PouchDB('sweat');
-
+    this.db = new PouchDB('sweat');
     this.state = {
-      latitude: null,
-      longitude: null,
-      error: null,
+      count: 0,
+      error: null
     };
+    this.reloadCount();
+  }
+
+  reloadCount() {
+    this.db.info().then((result) => {
+      this.setState({count: result.doc_count})
+    }).catch((err) => {
+      this.setState({error: err.message});
+    });
   }
 
   componentDidMount() {
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
-        this.setState({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          error: null,
+        const doc = {};
+        doc._id = `${position.timestamp}`;
+        if (position.coords.accuracy) doc.accuracy = position.coords.accuracy;
+        if (position.coords.altitude) doc.altitude = position.coords.altitude;
+        if (position.coords.altitudeAccuracy) doc.altitudeAccuracy = position.coords.altitudeAccuracy;
+        if (position.coords.heading) doc.heading = position.coords.heading;
+        if (position.coords.latitude) doc.latitude = position.coords.latitude;
+        if (position.coords.longitude) doc.longitude = position.coords.longitude;
+        if (position.coords.speed) doc.speed = position.coords.speed;
+        this.db.put(doc).then(() => {
+          this.reloadCount();
         });
       },
       (error) => this.setState({ error: error.message }),
@@ -42,25 +46,10 @@ class GeoTracker extends Component {
   }
 
   render() {
-    let googleMap;
-    if (this.state.latitude && this.state.longitude) {
-      googleMap = <GoogleMapReact
-        bootstrapURLKeys={{key: "AIzaSyC4R6AN7SmujjPUIGKdyao2Kqitzr1kiRg"}}
-        defaultCenter={{
-          lat: this.state.latitude,
-          lng: this.state.longitude
-        }}
-        defaultZoom={16}
-      >
-        <Marker lat={this.state.latitude} lng={this.state.longitude} />
-      </GoogleMapReact>
-    }
     return (
       <div>
         {this.state.error ? <span>Error: {this.state.error}</span> : null}
-        <div style={{ height: '400px', width: '100%' }}>
-          {googleMap}
-        </div>
+        {this.state.count}
       </div>
     );
   }
